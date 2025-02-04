@@ -1,76 +1,92 @@
-# API Documentation
+# Parent Onboarding Service API Documentation
 
-## Summary
-API для системы безопасности школы, обеспечивающее функционал генерации ссылок и загрузки фотографий родителей.
+## Overview
+This API provides endpoints for managing parent onboarding in the school security system.
 
-## What
-REST API предоставляет следующие возможности:
-- Генерация уникальных ссылок для родителей
-- Загрузка и сохранение фотографий
-- Получение информации о родителях
+## Base URL
+- Development: `http://localhost:5001`
+- Production: `https://[EC2_PUBLIC_IP]`
 
-## Why
-API разработано для обеспечения:
-- Безопасного процесса онбординга родителей
-- Удобного способа загрузки фотографий
-- Надежного хранения данных
+## Endpoints
 
-## How
+### Generate Onboarding Link
+Creates a unique link for parent photo upload.
 
-### Endpoints
+- **URL**: `/generate_link`
+- **Method**: `POST`
+- **Content-Type**: `application/x-www-form-urlencoded`
 
-#### 1. Генерация ссылки для родителя
+#### Request Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| parent_name | string | Yes | Parent's first name |
+| parent_surname | string | Yes | Parent's last name |
+| child_name | string | Yes | Child's full name |
 
-```http
-POST /generate_link
-Content-Type: application/x-www-form-urlencoded
-```
-
-**Parameters**
-| Имя | Тип | Обязательно | Описание |
-|-----|-----|-------------|-----------|
-| parent_name | string | Да | Имя родителя |
-| parent_surname | string | Да | Фамилия родителя |
-| child_name | string | Да | Имя ребенка |
-
-**Response**
+#### Response
 ```json
 {
-    "link": "http://localhost:5001/onboarding/123e4567-e89b-12d3-a456-426614174000"
+    "link": "http://[domain]/onboarding/[unique_id]"
 }
 ```
 
-#### 2. Страница онбординга
-
-```http
-GET /onboarding/<unique_id>
+#### Error Response
+```json
+{
+    "error": "Error description"
+}
 ```
 
-**Parameters**
-| Имя | Тип | Обязательно | Описание |
-|-----|-----|-------------|-----------|
-| unique_id | string | Да | Уникальный идентификатор родителя |
+### Photo Upload
+Handles parent photo upload process.
 
-**Response**
-- HTML страница с формой загрузки фото
+- **URL**: `/onboarding/<unique_id>`
+- **Method**: `GET`, `POST`
+- **Content-Type**: `multipart/form-data` (for POST)
 
-#### 3. Загрузка фото
+#### GET Response
+Returns HTML page with photo upload form
 
-```http
-POST /onboarding/<unique_id>
-Content-Type: multipart/form-data
+#### POST Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| photo | file | Yes | Photo file (JPEG/PNG) |
+
+#### Success Response
+```
+"Photo uploaded successfully!"
 ```
 
-**Parameters**
-| Имя | Тип | Обязательно | Описание |
-|-----|-----|-------------|-----------|
-| unique_id | string | Да | Уникальный идентификатор родителя |
-| photo | file | Да | Файл фотографии (JPG/PNG) |
+#### Error Responses
+- `404`: "Invalid link"
+- `400`: "No photo uploaded"
+- `400`: "No photo selected"
 
-**Response**
-- 200: "Photo uploaded successfully!"
-- 400: "No photo uploaded" или "No photo selected"
-- 404: "Invalid link"
+### Admin Dashboard
+View all registered parents.
+
+- **URL**: `/`
+- **Method**: `GET`
+- **Response**: HTML page with parents list
+
+## Error Codes
+- `200`: Success
+- `400`: Bad Request
+- `404`: Not Found
+- `500`: Server Error
+
+## AWS CloudWatch Metrics
+The following metrics are tracked:
+- API Response Times
+- Error Rates
+- Photo Upload Success Rate
+- Invalid Link Attempts
+
+## Security
+- All endpoints use HTTPS in production
+- File upload size limited to 16MB
+- Image validation before storage
+- Unique IDs are UUID v4
 
 ## Troubleshooting
 

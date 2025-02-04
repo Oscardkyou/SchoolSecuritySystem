@@ -155,3 +155,216 @@ docker-compose exec web alembic upgrade head
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Alembic Documentation](https://alembic.sqlalchemy.org/)
+
+## EC2 Deployment Guide
+
+## AWS Resource Configuration
+
+### Instance Details
+- Name: `dev-flask-selfie-onboarding-ec2`
+- Type: t2.micro
+- Region: eu-west-1
+
+### Required Tags
+```
+Environment: Development
+Team: Backend
+OwnedBy: [YOUR_NAME]
+```
+
+### Security Group Configuration
+Create a new security group:
+- Name: `dev-flask-selfie-onboarding-sg`
+- Description: Security group for parent onboarding service
+- Rules:
+  - Inbound:
+    - HTTP (80) from 0.0.0.0/0
+    - HTTPS (443) from 0.0.0.0/0
+    - SSH (22) from your IP
+  - Outbound:
+    - All traffic to 0.0.0.0/0
+
+## Deployment Steps
+
+### 1. Instance Setup
+```bash
+# Update system packages
+sudo apt-get update
+sudo apt-get upgrade -y
+
+# Install required packages
+sudo apt-get install -y python3-pip python3-venv nginx postgresql postgresql-contrib
+
+# Create application directory
+sudo mkdir /app
+sudo chown ubuntu:ubuntu /app
+```
+
+### 2. PostgreSQL Setup
+```bash
+# Start PostgreSQL
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Create database and user
+sudo -u postgres psql
+CREATE DATABASE school_security;
+CREATE USER app_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE school_security TO app_user;
+\q
+```
+
+### 3. Application Setup
+```bash
+# Clone repository
+cd /app
+git clone https://git-codecommit.eu-west-1.amazonaws.com/v1/repos/dev-flask-selfie-onboarding-service .
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file
+cp .env.example .env
+# Edit .env with production values
+```
+
+### 4. Nginx Configuration
+```bash
+# Create Nginx configuration
+sudo nano /etc/nginx/sites-available/flask_app
+
+# Add configuration:
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+# Enable site
+sudo ln -s /etc/nginx/sites-available/flask_app /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### 5. Systemd Service
+```bash
+# Create service file
+sudo nano /etc/systemd/system/flask_app.service
+
+# Add configuration:
+[Unit]
+Description=Flask Parent Onboarding Service
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/app
+Environment="PATH=/app/venv/bin"
+ExecStart=/app/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+# Start service
+sudo systemctl start flask_app
+sudo systemctl enable flask_app
+```
+
+### 6. CloudWatch Setup
+```bash
+# Install CloudWatch agent
+wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+sudo dpkg -i amazon-cloudwatch-agent.deb
+
+# Configure CloudWatch
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-config-wizard
+```
+
+## Monitoring
+
+### CloudWatch Metrics
+Monitor these metrics in CloudWatch:
+- CPU Utilization
+- Memory Usage
+- Disk I/O
+- Network Traffic
+- Application Logs
+- Error Rates
+
+### Health Checks
+1. System Health:
+```bash
+# Check service status
+sudo systemctl status flask_app
+sudo systemctl status nginx
+sudo systemctl status postgresql
+```
+
+2. Application Health:
+```bash
+# Check application logs
+sudo journalctl -u flask_app
+```
+
+## Backup and Recovery
+
+### Database Backup
+```bash
+# Create backup script
+sudo nano /app/backup.sh
+
+#!/bin/bash
+BACKUP_DIR="/app/backups"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+pg_dump -U app_user school_security > "$BACKUP_DIR/backup_$TIMESTAMP.sql"
+
+# Make script executable
+chmod +x /app/backup.sh
+
+# Add to crontab (daily backup at 2 AM)
+0 2 * * * /app/backup.sh
+```
+
+### Photo Backup
+```bash
+# Backup uploads directory
+aws s3 sync /app/uploads s3://dev-flask-selfie-onboarding-backup/uploads/
+```
+
+## Troubleshooting
+
+### Common Issues
+1. Application not starting:
+```bash
+sudo systemctl status flask_app
+sudo journalctl -u flask_app
+```
+
+2. Nginx errors:
+```bash
+sudo nginx -t
+sudo tail -f /var/log/nginx/error.log
+```
+
+3. Database connection issues:
+```bash
+sudo -u postgres psql -d school_security
+\dt
+```
+
+### Security Updates
+```bash
+# Regular security updates
+sudo apt-get update
+sudo apt-get upgrade -y
+sudo apt-get dist-upgrade -y

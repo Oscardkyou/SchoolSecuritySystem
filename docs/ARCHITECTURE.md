@@ -1,171 +1,185 @@
-# Architecture Documentation
+# System Architecture Documentation
 
-## Summary
-Документация по архитектуре системы безопасности школы, описывающая основные компоненты, их взаимодействие и принятые архитектурные решения.
+## Overview
+The Parent Onboarding Service is a Flask-based web application designed for secure parent identification in schools. It follows a microservices architecture pattern and is deployed on AWS EC2.
 
-## What
-Система состоит из следующих компонентов:
-- Веб-приложение на Flask
-- База данных PostgreSQL
-- Файловое хранилище для фотографий
-- Docker-контейнеры для изоляции компонентов
+## System Components
 
-## Why
-### Архитектурные решения
+### 1. Web Application (Flask)
+- Handles HTTP requests
+- Manages user sessions
+- Processes form submissions
+- Serves HTML templates
+- Validates uploaded photos
 
-1. **Выбор Flask**
-   - Легковесный фреймворк
-   - Простота интеграции
-   - Богатая экосистема расширений
-   - Хорошая документация
+### 2. Database (PostgreSQL)
+- Stores parent information
+- Manages photo metadata
+- Handles relationships between entities
+- Ensures data integrity
 
-2. **Выбор PostgreSQL**
-   - Надежность и стабильность
-   - Поддержка транзакций
-   - Расширяемость
-   - Хорошая производительность
+### 3. File Storage
+- Manages uploaded photos
+- Implements secure file handling
+- Provides backup mechanisms
 
-3. **Использование Docker**
-   - Изоляция компонентов
-   - Простота развертывания
-   - Воспроизводимость окружения
-   - Масштабируемость
+### 4. AWS Integration
+- EC2 for application hosting
+- CloudWatch for monitoring
+- S3 for photo backups
+- IAM for security
 
-## How
+## Data Model
 
-### Компоненты системы
-
-1. **Веб-приложение (app.py)**
-   ```python
-   # Основные компоненты
-   - Flask: веб-фреймворк
-   - SQLAlchemy: ORM для работы с БД
-   - Pillow: обработка изображений
-   ```
-
-2. **База данных**
-   ```sql
-   -- Основные таблицы
-   parents (
-       id: PK,
-       unique_id: UUID,
-       parent_name: TEXT,
-       parent_surname: TEXT,
-       child_name: TEXT,
-       created_at: TIMESTAMP
-   )
-
-   photos (
-       id: PK,
-       parent_id: FK,
-       filename: TEXT,
-       uploaded_at: TIMESTAMP
-   )
-   ```
-
-3. **Файловое хранилище**
-   ```
-   uploads/
-   ├── <unique_id>_<timestamp>.jpg
-   └── ...
-   ```
-
-### Диаграмма компонентов
-```
-[Веб-браузер] ←→ [Flask App] ←→ [PostgreSQL]
-                     ↓
-              [File Storage]
-```
-
-### Процессы
-
-1. **Генерация ссылки**
-   ```
-   1. Получение данных родителя
-   2. Генерация UUID
-   3. Сохранение в БД
-   4. Возврат ссылки
-   ```
-
-2. **Загрузка фото**
-   ```
-   1. Проверка UUID
-   2. Обработка фото
-   3. Сохранение файла
-   4. Обновление БД
-   ```
-
-## Troubleshooting
-
-### Диагностика проблем
-
-1. **Проблемы с базой данных**
-   ```python
-   # Проверка подключения
-   from sqlalchemy import create_engine
-   engine = create_engine(DATABASE_URL)
-   engine.connect()
-   ```
-
-2. **Проблемы с файловой системой**
-   ```python
-   # Проверка прав доступа
-   import os
-   os.access('/app/uploads', os.W_OK)
-   ```
-
-### Мониторинг
-
-1. **Метрики приложения**
-   - Количество запросов
-   - Время отклика
-   - Использование памяти
-
-2. **Метрики базы данных**
-   - Активные соединения
-   - Время выполнения запросов
-   - Использование диска
-
-## Examples
-
-### Пример архитектурного решения
-
+### Parent Entity
 ```python
-# Использование паттерна Repository
-class ParentRepository:
-    def __init__(self, session):
-        self.session = session
-
-    def create(self, parent_data):
-        parent = Parent(**parent_data)
-        self.session.add(parent)
-        self.session.commit()
-        return parent
-
-    def find_by_unique_id(self, unique_id):
-        return self.session.query(Parent).filter(
-            Parent.unique_id == unique_id
-        ).first()
+class Parent:
+    id: Integer (Primary Key)
+    unique_id: String (UUID)
+    parent_name: String
+    parent_surname: String
+    child_name: String
+    created_at: DateTime
+    photos: Relationship[Photo]
 ```
 
-### Пример обработки ошибок
-
+### Photo Entity
 ```python
-from functools import wraps
-
-def handle_db_errors(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            return {"error": str(e)}, 500
-    return wrapper
+class Photo:
+    id: Integer (Primary Key)
+    parent_id: Integer (Foreign Key)
+    filename: String
+    uploaded_at: DateTime
+    parent: Relationship[Parent]
 ```
 
-## References
-- [Flask Architecture Patterns](https://flask.palletsprojects.com/en/2.0.x/patterns/)
-- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
-- [Docker Architecture](https://docs.docker.com/get-started/overview/)
-- [PostgreSQL Architecture](https://www.postgresql.org/docs/current/tutorial-arch.html)
+## Security Architecture
+
+### Authentication & Authorization
+- Unique link generation for each parent
+- UUID-based access control
+- Session management
+
+### Data Protection
+- HTTPS encryption
+- Secure file uploads
+- Database encryption
+- AWS security groups
+
+### Monitoring & Logging
+- CloudWatch integration
+- Error tracking
+- Access logging
+- Performance metrics
+
+## System Interactions
+
+### Photo Upload Flow
+1. Parent receives unique link
+2. Accesses onboarding page
+3. Uploads photo
+4. System validates photo
+5. Photo stored securely
+6. Metadata saved to database
+
+### Admin Dashboard Flow
+1. Admin accesses dashboard
+2. System retrieves parent list
+3. Displays parent information
+4. Shows photo status
+
+## Performance Considerations
+
+### Optimization Techniques
+- Image compression
+- Database indexing
+- Caching strategies
+- Load balancing ready
+
+### Scalability
+- Horizontal scaling support
+- Database connection pooling
+- Stateless application design
+- AWS auto-scaling ready
+
+## Deployment Architecture
+
+### Production Environment
+```
+[Client] -> [Nginx] -> [Flask App] -> [PostgreSQL]
+                    -> [File Storage]
+                    -> [CloudWatch]
+```
+
+### Development Environment
+```
+[Docker Compose]
+  |- Web Service
+  |- PostgreSQL
+  |- Volumes
+```
+
+## Error Handling
+
+### Application Errors
+- Input validation
+- File processing errors
+- Database errors
+- Network timeouts
+
+### System Errors
+- Service unavailability
+- Database connection issues
+- Storage capacity issues
+- AWS service errors
+
+## Maintenance Procedures
+
+### Backup Strategy
+- Daily database backups
+- Photo backups to S3
+- Configuration backups
+- Automated scheduling
+
+### Update Procedures
+- Zero-downtime updates
+- Database migrations
+- Configuration updates
+- Security patches
+
+## Development Guidelines
+
+### Code Structure
+```
+/app
+  ├── app.py           # Main application
+  ├── models.py        # Database models
+  ├── config.py        # Configuration
+  ├── requirements.txt # Dependencies
+  ├── templates/       # HTML templates
+  ├── static/          # Static files
+  ├── migrations/      # Database migrations
+  └── uploads/         # Photo storage
+```
+
+### Best Practices
+- PEP 8 compliance
+- Type hinting
+- Comprehensive testing
+- Documentation
+- Code review process
+
+## Future Improvements
+
+### Planned Features
+- Multi-language support
+- Face recognition
+- Bulk photo upload
+- API authentication
+- Mobile app support
+
+### Technical Debt
+- Migration to S3
+- API versioning
+- Test coverage
+- Performance optimization

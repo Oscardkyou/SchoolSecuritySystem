@@ -107,3 +107,37 @@ db_session.commit()
 - [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
 - [Docker Documentation](https://docs.docker.com/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+## AWS Resource Information
+
+### Resource Naming
+- Service Name: `dev-flask-selfie-onboarding-service`
+- Environment: Development
+- Team: Backend
+
+### AWS Tags
+- Environment: Development
+- Team: Backend
+- OwnedBy: [YOUR_NAME]
+
+## AWS Deployment
+
+### EC2 Setup
+1. Instance Type: t2.micro (minimum)
+2. Security Group: 
+   - Allow HTTP (80)
+   - Allow HTTPS (443)
+   - Allow SSH (22)
+
+### Monitoring
+- CloudWatch metrics enabled
+- Custom metrics:
+  - Photo upload success rate
+  - API response times
+  - Error rates
+
+## Security Considerations
+- All photos stored securely
+- Data encryption in transit
+- Regular security updates
+- AWS security best practices implemented
