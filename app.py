@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from models import Base, Parent, Photo
 from config import Config
 import watchtower
-import boto3
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +19,6 @@ if os.getenv('FLASK_ENV') == 'production':
     cloudwatch = watchtower.CloudWatchLogHandler(
         log_group='dev-flask-selfie-onboarding-service',
         stream_name=datetime.now().strftime('%Y-%m-%d'),
-        boto3_client=boto3.client('logs', region_name='eu-west-1')
     )
     logger.addHandler(cloudwatch)
 
