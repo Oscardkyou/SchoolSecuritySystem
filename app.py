@@ -14,7 +14,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Add CloudWatch handler in production
-if os.getenv('FLASK_ENV') == 'production':
+if os.getenv('FLASK_ENV') == 'production' and os.getenv('USE_CLOUDWATCH') == 'true':
+    import watchtower
     cloudwatch = watchtower.CloudWatchLogHandler(
         log_group='dev-flask-selfie-onboarding-service',
         stream_name=datetime.now().strftime('%Y-%m-%d'),

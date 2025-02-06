@@ -9,7 +9,8 @@ services:
       - ./uploads:/app/uploads
     environment:
       - FLASK_APP=app.py
-      - FLASK_ENV=production
+      - FLASK_ENV=development
+      - USE_CLOUDWATCH=false
       - DATABASE_URL=postgresql://user:password@db:5432/school_security
     depends_on:
       db:
