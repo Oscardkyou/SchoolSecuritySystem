@@ -8,7 +8,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from models import Base, Parent, Photo
 from config import Config
-import watchtower
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
