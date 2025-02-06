@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install gunicorn
 
 # Create uploads directory
 RUN mkdir -p /app/uploads && chmod 777 /app/uploads
@@ -21,5 +22,6 @@ COPY . .
 # Make entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
 
-# Set entrypoint
+EXPOSE 5000
+
 ENTRYPOINT ["/app/entrypoint.sh"]
